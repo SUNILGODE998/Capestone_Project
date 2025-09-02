@@ -1,4 +1,3 @@
-
 resilience4j:
   circuitbreaker:
     instances:
@@ -11,5 +10,14 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 1
         registerHealthIndicator: true
 
+  timelimiter:
+    instances:
       authServiceTimeLimiter:
         timeoutDuration: 3s
+
+  ratelimiter:
+    instances:
+      authServiceRateLimiter:
+        limitForPeriod: 5        # maximum 5 login attempts
+        limitRefreshPeriod: 1m   # per 1 minute
+        timeoutDuration: 500ms   # wait time for a permit

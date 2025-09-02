@@ -3,6 +3,7 @@ package com.capestone.login.Service;
 import com.capestone.login.Util.JwtUtil;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -22,7 +23,7 @@ public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
-    private final AuthenticationManager authenticationManager; // @Lazy to break cycle
+    private final AuthenticationManager authenticationManager; // @Lazy avoids circular dependency
     private final JwtUtil jwtUtil;
     private final Set<String> tokenBlacklist = new HashSet<>();
 
@@ -31,7 +32,9 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
+    // ✅ CircuitBreaker + RateLimiter applied
     @CircuitBreaker(name = "authServiceCircuitBreaker", fallbackMethod = "fallbackLogin")
+    @RateLimiter(name = "authServiceRateLimiter", fallbackMethod = "rateLimitFallback")
     public String login(String username, String password) {
         try {
             Authentication auth = authenticationManager.authenticate(
@@ -40,20 +43,27 @@ public class AuthService {
             return jwtUtil.generateToken(auth);
 
         } catch (BadCredentialsException ex) {
-            // Counted as invalid credentials → throw 500
+            // Counted as invalid credentials → returns 500
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Invalid username or password");
 
         } catch (Exception ex) {
-            // Counted by CircuitBreaker → fallback will return 503
+            // Counted by CircuitBreaker → fallback returns 503
             throw new RuntimeException("Authentication service failure", ex);
         }
     }
 
+    // ✅ RateLimiter fallback → 429
+    public String rateLimitFallback(String username, String password, Throwable t) {
+        throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                "Too many login attempts. Please wait before retrying.");
+    }
+
+    // ✅ CircuitBreaker fallback → 503
     public String fallbackLogin(String username, String password, Throwable t) {
         logger.error("CircuitBreaker OPEN. Login temporarily disabled for user: {}", username, t);
         throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "Too many failed login attempts. Please try again later.");
+                "Server is unavailable! Please try after 30 seconds.");
     }
 
     public void logout(String token) {

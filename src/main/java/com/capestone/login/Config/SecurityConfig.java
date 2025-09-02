@@ -65,6 +65,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        //noinspection deprecation
         return NoOpPasswordEncoder.getInstance();
     }
 }
