@@ -43,6 +43,7 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -92,8 +93,6 @@
 			<artifactId>slf4j-api</artifactId>
 			<version>2.0.9</version>
 		</dependency>
-
-
 	</dependencies>
 
 	<build>

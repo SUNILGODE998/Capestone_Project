@@ -23,9 +23,14 @@ public class AuthController {
         return ResponseEntity.ok(token);
     }
 
+
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader("Authorization") String token) {
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
         authService.logout(token);
         return ResponseEntity.ok().build();
     }
+
 }
