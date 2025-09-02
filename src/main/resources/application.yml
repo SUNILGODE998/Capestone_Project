@@ -1,10 +1,15 @@
+
 resilience4j:
   circuitbreaker:
     instances:
       authServiceCircuitBreaker:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        failureRateThreshold: 50
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 3
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 100
         waitDurationInOpenState: 30s
-        permittedNumberOfCallsInHalfOpenState: 2
-        automaticTransitionFromOpenToHalfOpenEnabled: true
+        permittedNumberOfCallsInHalfOpenState: 1
+        registerHealthIndicator: true
+
+      authServiceTimeLimiter:
+        timeoutDuration: 3s
