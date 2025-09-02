@@ -56,11 +56,15 @@ public class AuthService {
     }
 
     public void logout(String token) {
-        logger.info("Logging out token: {}", token);
+        String cleanToken = token.replace("Bearer ", "");
+        String jti = jwtUtil.extractJti(cleanToken);
+        logger.info("Logging out token with jti: {}", jti);
         tokenBlacklist.add(token);
     }
 
     public boolean isTokenBlacklisted(String token) {
-        return tokenBlacklist.contains(token);
+        String cleanToken = token.replace("Bearer ", "");
+        String jti = jwtUtil.extractJti(cleanToken);
+        return tokenBlacklist.contains(jti);
     }
 }
