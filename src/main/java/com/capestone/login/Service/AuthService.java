@@ -10,16 +10,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 @Service
 public class AuthService {
-
-    private static final int MAX_TOKEN_ATTEMPTS = 3;
-    private static final long COOLDOWN_PERIOD_MS = 10000; // 1 minute
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
@@ -27,66 +22,37 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final Set<String> tokenBlacklist = new HashSet<>();
 
-    private final Map<String, Integer> tokenAttempts = new HashMap<>();
-    private final Map<String, Long> cooldownStartTime = new HashMap<>();
-
-
     public AuthService(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
     }
 
-    @CircuitBreaker(name = "authServiceCircuitBreaker", fallbackMethod = "fallbackLogin")
+
     public String login(String username, String password) {
         logger.info("Attempting login for user: {}", username);
-
-        long currentTime = System.currentTimeMillis();
-
-        // Check if user is in cooldown
-        if (cooldownStartTime.containsKey(username)) {
-            long cooldownStart = cooldownStartTime.get(username);
-            if (currentTime - cooldownStart < COOLDOWN_PERIOD_MS) {
-                logger.warn("User {} is in cooldown period.", username);
-                throw new RuntimeException("Too many requests. Please wait before generating another token.");
-            } else {
-                // Cooldown expired, reset counters
-                cooldownStartTime.remove(username);
-                tokenAttempts.put(username, 0);
-            }
+        try {
+            Authentication auth = authenticateUser(username, password);
+            String token = jwtUtil.generateToken(auth);
+            logger.info("Login successful for user: {}", username);
+            return token;
+        } catch (Exception e) {
+            return "Service Unavailable";
         }
+    }
 
-        int attempts = tokenAttempts.getOrDefault(username, 0);
-        if (attempts >= MAX_TOKEN_ATTEMPTS) {
-            cooldownStartTime.put(username, currentTime);
-            logger.warn("User {} exceeded token generation limit. Cooldown started.", username);
-            throw new RuntimeException("Too many requests. Please wait before generating another token.");
-        }
-
-
-        // Simulate failure for testing
-        if ("fail".equals(username)) {
-            throw new RuntimeException("Simulated failure");
-        }
-
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password)
-        );
-        String token = jwtUtil.generateToken(auth);
-
-        tokenAttempts.put(username, attempts + 1);
-        logger.info("Login successful for user: {}", username);
-        return token;
+    @CircuitBreaker(name = "authServiceCircuitBreaker", fallbackMethod = "fallbackLogin")
+    private Authentication authenticateUser(String username, String password) {
+        throw new RuntimeException("Database Unavailable");
+//        Authentication auth = authenticationManager.authenticate(
+//                new UsernamePasswordAuthenticationToken(username, password)
+//        );
+//        return auth;
     }
 
     // ✅ Fallback method for circuit breaker
     public String fallbackLogin(String username, String password, Throwable t) {
-        if (t instanceof CallNotPermittedException) {
-            logger.warn("Circuit breaker is OPEN. Login temporarily disabled for user: {}", username);
-            return "Too many failed attempts. Please wait before trying again.";
-        }
-
-        logger.error("Login failed for user: {}. Fallback triggered due to: {}", username, t.getMessage());
-        return "Login service is temporarily unavailable";
+        logger.error("Authentication service is unavailable. Fallback triggered for user: {}", username, t);
+        return "Authentication service is unavailable, please try again later.";
     }
 
     public void logout(String token) {
