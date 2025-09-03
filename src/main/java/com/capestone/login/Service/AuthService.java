@@ -37,31 +37,41 @@ public class AuthService {
     @RateLimiter(name = "authServiceRateLimiter", fallbackMethod = "rateLimitFallback")
     public String login(String username, String password) {
         try {
+
+            logger.info("Login attempt for user: {}", username);
+
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password)
             );
-            return jwtUtil.generateToken(auth);
+
+            String token = jwtUtil.generateToken(auth);
+            logger.info("User '{}' logged in successfully. JWT issued.", username);
+            return token;
 
         } catch (BadCredentialsException ex) {
-            // Counted as invalid credentials → returns 500
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+
+            logger.warn("Invalid login attempt for user: {}", username);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                     "Invalid username or password");
 
         } catch (Exception ex) {
-            // Counted by CircuitBreaker → fallback returns 503
+            logger.error("Unexpected authentication error for user '{}'", username, ex);
             throw new RuntimeException("Authentication service failure", ex);
         }
     }
 
     // ✅ RateLimiter fallback → 429
     public String rateLimitFallback(String username, String password, Throwable t) {
+        logger.warn("Rate limit exceeded for user: {}", username);
         throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                 "Too many login attempts. Please wait before retrying.");
     }
 
     // ✅ CircuitBreaker fallback → 503
     public String fallbackLogin(String username, String password, Throwable t) {
-        logger.error("CircuitBreaker OPEN. Login temporarily disabled for user: {}", username, t);
+
+        logger.error("CircuitBreaker OPEN. Login temporarily disabled for user: {}", username);
+
         throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                 "Server is unavailable! Please try after 30 seconds.");
     }
@@ -70,13 +80,19 @@ public class AuthService {
         String cleanToken = token.replace("Bearer ", "");
         String jti = jwtUtil.extractJti(cleanToken);
         logger.info("Logging out token with jti: {}", jti);
+
         tokenBlacklist.add(jti);
+
+        logger.info("Token with jti '{}' has been blacklisted successfully.", jti);
+        logger.debug("Current blacklisted tokens: {}", tokenBlacklist);
     }
 
     public boolean isTokenBlacklisted(String token) {
         String cleanToken = token.replace("Bearer ", "");
         String jti = jwtUtil.extractJti(cleanToken);
-        return tokenBlacklist.contains(jti);
+        boolean blacklisted = tokenBlacklist.contains(jti);
+        logger.debug("Token with jti '{}' blacklisted check: {}", jti, blacklisted);
+        return blacklisted;
     }
 
     public Set<String> getTokenBlacklist() {
