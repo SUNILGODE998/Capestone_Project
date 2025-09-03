@@ -27,8 +27,6 @@ public class WebSecurityConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
 
                 .allowCredentials(true);
-
     }
-
 }
 

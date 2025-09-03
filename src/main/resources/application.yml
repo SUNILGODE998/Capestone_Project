@@ -19,6 +19,19 @@ resilience4j:
         limitRefreshPeriod: 1m   # per 1 minute
         timeoutDuration: 500ms   # wait time for a permit
 #resilience4j:
+#  ratelimiter:
+#    authServiceRateLimiter:
+#      limitForPeriod: 3
+#      limitRefreshPeriod: 1m
+#      timeoutDuration: 0
+#  circuitbreaker:
+#    authServiceCircuitBreaker:
+#      registerHealthIndicator: true
+#      slidingWindowSize: 5
+#      minimumNumberOfCalls: 3
+#      failureRateThreshold: 50
+#      waitDurationInOpenState: 30s
+#resilience4j:
 #  circuitbreaker:
 #    instances:
 #      authServiceCircuitBreaker:

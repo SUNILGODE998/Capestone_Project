@@ -59,5 +59,4 @@ public class JwtUtil {
     public String extractJti(String token) {
         return extractClaim(token, Claims::getId);
     }
-
 }
