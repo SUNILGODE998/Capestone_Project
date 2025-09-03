@@ -47,12 +47,10 @@ public class AuthService {
             logger.info("User '{}' logged in successfully. JWT issued.", username);
             return token;
 
+
         } catch (BadCredentialsException ex) {
-
             logger.warn("Invalid login attempt for user: {}", username);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Invalid username or password");
-
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         } catch (Exception ex) {
             logger.error("Unexpected authentication error for user '{}'", username, ex);
             throw new RuntimeException("Authentication service failure", ex);
@@ -61,6 +59,10 @@ public class AuthService {
 
     // ✅ CircuitBreaker fallback → 503
     public String fallbackLogin(String username, String password, Throwable t) {
+        if (t instanceof ResponseStatusException ex &&
+                ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            throw ex; // propagate directly, skip fallback
+        }
 
         logger.error("CircuitBreaker OPEN. Login temporarily disabled for user: {}", username);
 

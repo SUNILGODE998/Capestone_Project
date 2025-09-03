@@ -24,7 +24,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @RateLimiter(name = "authServiceRateLimiter", fallbackMethod = "rateLimitFallback")
+//    @RateLimiter(name = "authServiceRateLimiter", fallbackMethod = "rateLimitFallback")
     public ResponseEntity<String> login(@RequestBody User user) {
         String token = authService.login(user.getUsername(), user.getPassword());
         return ResponseEntity.ok(token);
