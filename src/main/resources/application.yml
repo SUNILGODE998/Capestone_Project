@@ -12,12 +12,6 @@ resilience4j:
         ignoreExceptions:
           - org.springframework.security.authentication.BadCredentialsException
 
-
-  timelimiter:
-    instances:
-      authServiceTimeLimiter:
-        timeoutDuration: 3s
-
   ratelimiter:
     instances:
       authServiceRateLimiter:

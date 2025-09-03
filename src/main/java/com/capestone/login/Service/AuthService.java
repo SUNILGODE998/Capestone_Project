@@ -32,9 +32,8 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-    // ✅ CircuitBreaker + RateLimiter applied
+    // ✅ CircuitBreaker
     @CircuitBreaker(name = "authServiceCircuitBreaker", fallbackMethod = "fallbackLogin")
-    @RateLimiter(name = "authServiceRateLimiter", fallbackMethod = "rateLimitFallback")
     public String login(String username, String password) {
         try {
 
@@ -58,13 +57,6 @@ public class AuthService {
             logger.error("Unexpected authentication error for user '{}'", username, ex);
             throw new RuntimeException("Authentication service failure", ex);
         }
-    }
-
-    // ✅ RateLimiter fallback → 429
-    public String rateLimitFallback(String username, String password, Throwable t) {
-        logger.warn("Rate limit exceeded for user: {}", username);
-        throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                "Too many login attempts. Please wait before retrying.");
     }
 
     // ✅ CircuitBreaker fallback → 503
