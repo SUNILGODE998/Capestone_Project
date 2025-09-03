@@ -1,5 +1,6 @@
 package com.capestone.login.Util;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -19,8 +20,15 @@ import java.util.function.Function;
 
 @Component
 public class JwtUtil {
-    private final String SECRET_STRING = "qS5hGz4Jt2p9xR7wYv8u/A+b0cI1dE2f3gH4jK5lM6nO7p8qR9sT0u1vW2xY3z4A5B6C7D8E9F=\n";
-    private final Key SECRET_KEY = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_STRING));
+    private final Key SECRET_KEY;
+    public JwtUtil() {
+        Dotenv dotenv = Dotenv.configure().load();
+        String base64Key = dotenv.get("JWT_SECRET");
+        if (base64Key == null) {
+            throw new IllegalStateException("JWT_SECRET environment variable not set");
+        }
+        this.SECRET_KEY = Keys.hmacShaKeyFor(Decoders.BASE64.decode(base64Key));
+    }
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);}
 
