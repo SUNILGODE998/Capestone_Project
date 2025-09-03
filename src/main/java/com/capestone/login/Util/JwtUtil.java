@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -30,9 +31,13 @@ public class JwtUtil {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);}
 
-    private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder().setSigningKey(SECRET_KEY)
-                .build().parseClaimsJws(token).getBody();}
+   private Claims extractAllClaims(String token) {
+                    return Jwts.parser()
+                            .verifyWith((SecretKey) SECRET_KEY)
+                            .build()
+                            .parseSignedClaims(token)
+                            .getPayload();
+                }
 
     private Boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());}

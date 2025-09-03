@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -19,12 +20,16 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex, WebRequest request) {
-        logger.error("Authentication failed: {}", ex.getMessage());
-        return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password", request);
-    }
+    @ExceptionHandler({BadCredentialsException.class, MethodArgumentNotValidException.class})
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex, WebRequest request) {
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getDefaultMessage())
+                .findFirst()
+                .orElse("Validation failed");
 
+        logger.error("Validation error: {}", errorMessage);
+        return buildResponse(HttpStatus.BAD_REQUEST, errorMessage, request);
+    }
     @ExceptionHandler(CallNotPermittedException.class)
     public ResponseEntity<Map<String, Object>> handleCircuitBreaker(CallNotPermittedException ex, WebRequest request) {
         logger.error("CircuitBreaker open: {}", ex.getMessage());
