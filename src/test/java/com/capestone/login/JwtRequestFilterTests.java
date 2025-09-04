@@ -5,7 +5,6 @@ import com.capestone.login.Service.UserService;
 import com.capestone.login.Util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,6 +14,7 @@ import jakarta.servlet.FilterChain;
 import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
 
 class JwtRequestFilterTests {
 
@@ -23,10 +23,41 @@ class JwtRequestFilterTests {
     private UserService userService;
     private HashSet<String> blacklist;
 
+    // Stub for JwtUtil
+    static class JwtUtilStub extends JwtUtil {
+        @Override
+        public String extractUsername(String token) {
+            if ("valid-token".equals(token)) return "john";
+            if ("bad-token".equals(token)) return "john";
+            return null;
+        }
+
+        @Override
+        public Boolean validateToken(String token, UserDetails userDetails) {
+            return "valid-token".equals(token);
+        }
+    }
+
+    // Stub for UserService
+    static class UserServiceStub extends UserService {
+        public UserServiceStub() {
+            super(null); // Pass null since we don't use repository in stub
+        }
+
+        @Override
+        public UserDetails loadUserByUsername(String username) {
+            if ("john".equals(username)) {
+                return org.springframework.security.core.userdetails.User
+                        .withUsername("john").password("pass").authorities("USER").build();
+            }
+            throw new RuntimeException("User not found");
+        }
+    }
+
     @BeforeEach
     void setUp() {
-        jwtUtil = Mockito.mock(JwtUtil.class);
-        userService = Mockito.mock(UserService.class);
+        jwtUtil = new JwtUtilStub();
+        userService = new UserServiceStub();
         blacklist = new HashSet<>();
         jwtRequestFilter = new JwtRequestFilter(userService, jwtUtil, blacklist);
     }
@@ -36,17 +67,10 @@ class JwtRequestFilterTests {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer valid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain chain = Mockito.mock(FilterChain.class);
-
-        Mockito.when(jwtUtil.extractUsername("valid-token")).thenReturn("john");
-        Mockito.when(jwtUtil.validateToken(Mockito.anyString(), Mockito.any(UserDetails.class)))
-                .thenReturn(true);
-        Mockito.when(userService.loadUserByUsername("john"))
-                .thenReturn(org.springframework.security.core.userdetails.User
-                        .withUsername("john").password("pass").authorities("USER").build());
+        FilterChain chain = mock(FilterChain.class);
 
         jwtRequestFilter.doFilterInternal(request, response, chain);
-        Mockito.verify(chain).doFilter(request, response);
+        verify(chain).doFilter(request, response);
     }
 
     @Test
@@ -54,7 +78,7 @@ class JwtRequestFilterTests {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer bad-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain chain = Mockito.mock(FilterChain.class);
+        FilterChain chain = mock(FilterChain.class);
 
         blacklist.add("bad-token");
 

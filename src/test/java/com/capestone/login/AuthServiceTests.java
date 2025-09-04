@@ -3,61 +3,72 @@ package com.capestone.login;
 import com.capestone.login.Service.AuthService;
 import com.capestone.login.Util.JwtUtil;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class AuthServiceTests {
 
-    @Mock
-    private AuthenticationManager authenticationManager;
+    // Stub for AuthenticationManager
+    static class AuthenticationManagerStub implements AuthenticationManager {
+        private boolean valid = true;
+        private boolean throwBadCredentials = false;
+        private boolean throwRuntime = false;
 
-    @Mock
-    private JwtUtil jwtUtil;
+        public void setValid(boolean valid) { this.valid = valid; }
+        public void setThrowBadCredentials(boolean v) { this.throwBadCredentials = v; }
+        public void setThrowRuntime(boolean v) { this.throwRuntime = v; }
 
-    @InjectMocks
-    private AuthService authService;
+        @Override
+        public Authentication authenticate(Authentication authentication) {
+            if (throwBadCredentials) throw new BadCredentialsException("Bad credentials");
+            if (throwRuntime) throw new RuntimeException("DB down");
+            if (valid) return authentication;
+            throw new BadCredentialsException("Invalid");
+        }
+    }
+
+    // Stub for JwtUtil
+    static class JwtUtilStub extends JwtUtil {
+        @Override
+        public String generateToken(Authentication authentication) {
+            return "fake-jwt-token";
+        }
+    }
 
     @Test
     void login_ShouldReturnToken_WhenCredentialsValid() {
-        // Arrange
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(mock(org.springframework.security.core.Authentication.class));
-        when(jwtUtil.generateToken(any())).thenReturn("fake-jwt-token");
+        AuthenticationManagerStub authManager = new AuthenticationManagerStub();
+        JwtUtilStub jwtUtil = new JwtUtilStub();
+        AuthService authService = new AuthService(authManager, jwtUtil);
 
-        // Act
         String token = authService.login("user", "pass");
-
-        // Assert
         assertEquals("fake-jwt-token", token);
-        verify(jwtUtil, times(1)).generateToken(any());
     }
 
     @Test
     void login_ShouldThrow500_WhenInvalidCredentials() {
-        when(authenticationManager.authenticate(any()))
-                .thenThrow(new BadCredentialsException("Bad credentials"));
+        AuthenticationManagerStub authManager = new AuthenticationManagerStub();
+        authManager.setThrowBadCredentials(true);
+        JwtUtilStub jwtUtil = new JwtUtilStub();
+        AuthService authService = new AuthService(authManager, jwtUtil);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> authService.login("wrong", "wrong"));
 
-        assertEquals(500, exception.getStatusCode().value()); // In your code → 500
+        assertEquals(500, exception.getStatusCode().value());
     }
 
     @Test
     void login_ShouldThrowRuntime_WhenServiceFailure() {
-        when(authenticationManager.authenticate(any()))
-                .thenThrow(new RuntimeException("DB down"));
+        AuthenticationManagerStub authManager = new AuthenticationManagerStub();
+        authManager.setThrowRuntime(true);
+        JwtUtilStub jwtUtil = new JwtUtilStub();
+        AuthService authService = new AuthService(authManager, jwtUtil);
 
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> authService.login("user", "pass"));
