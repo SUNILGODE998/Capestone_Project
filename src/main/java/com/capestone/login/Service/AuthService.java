@@ -1,9 +1,9 @@
 package com.capestone.login.Service;
 
 import com.capestone.login.Util.JwtUtil;
+import com.capestone.login.Util.PasswordDecryptor;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -23,7 +23,7 @@ public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
-    private final AuthenticationManager authenticationManager; // @Lazy avoids circular dependency
+    private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final Set<String> tokenBlacklist = new HashSet<>();
 
@@ -32,21 +32,21 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-    // ✅ CircuitBreaker
     @CircuitBreaker(name = "authServiceCircuitBreaker", fallbackMethod = "fallbackLogin")
-    public String login(String username, String password) {
+    public String login(String username, String encryptedPassword) {
         try {
-
             logger.info("Login attempt for user: {}", username);
 
+            // Decrypt password received from frontend
+            String decryptedPassword = PasswordDecryptor.decrypt(encryptedPassword);
+
             Authentication auth = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, password)
+                    new UsernamePasswordAuthenticationToken(username, decryptedPassword)
             );
 
             String token = jwtUtil.generateToken(auth);
             logger.info("User '{}' logged in successfully. JWT issued.", username);
             return token;
-
 
         } catch (BadCredentialsException ex) {
             logger.warn("Invalid login attempt for user: {}", username);
@@ -57,14 +57,11 @@ public class AuthService {
         }
     }
 
-    // ✅ CircuitBreaker fallback → 503
     public String fallbackLogin(String username, String password, Throwable t) {
         if (t instanceof BadCredentialsException ex) {
-            throw ex; // propagate directly, skip fallback
+            throw ex;
         }
-
         logger.error("CircuitBreaker OPEN. Login temporarily disabled for user: {}", username);
-
         throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                 "Server is unavailable! Please try after 30 seconds.");
     }
