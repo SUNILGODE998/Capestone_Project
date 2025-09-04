@@ -5,6 +5,8 @@ import com.capestone.login.Service.AuthService;
 import com.capestone.login.Filter.JwtRequestFilter;
 import com.capestone.login.Service.UserService;
 import com.capestone.login.Util.JwtUtil;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +43,15 @@ class AuthControllerTests {
                 }
             };
             JwtUtil dummyJwtUtil = new JwtUtil() {};
-            return new AuthService(dummyManager, dummyJwtUtil) {
+            CircuitBreakerRegistry dummyCircuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults();
+            RateLimiterRegistry dummyRateLimiterRegistry = RateLimiterRegistry.ofDefaults();
+
+            return new AuthService(
+                    dummyManager,
+                    dummyJwtUtil,
+                    dummyCircuitBreakerRegistry,
+                    dummyRateLimiterRegistry
+            ) {
                 @Override
                 public String login(String username, String password) {
                     if ("john".equals(username) && "password".equals(password)) {
@@ -61,7 +71,6 @@ class AuthControllerTests {
                 }
             };
         }
-
         @Bean
         JwtRequestFilter jwtRequestFilter(UserService userService, JwtUtil jwtUtil) {
             return new JwtRequestFilter(userService, jwtUtil, new java.util.HashSet<>());

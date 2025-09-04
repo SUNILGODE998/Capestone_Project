@@ -2,10 +2,11 @@ package com.capestone.login;
 
 import com.capestone.login.Service.AuthService;
 import com.capestone.login.Util.JwtUtil;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -44,7 +45,9 @@ class AuthServiceTests {
     void login_ShouldReturnToken_WhenCredentialsValid() {
         AuthenticationManagerStub authManager = new AuthenticationManagerStub();
         JwtUtilStub jwtUtil = new JwtUtilStub();
-        AuthService authService = new AuthService(authManager, jwtUtil);
+        CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults();
+        RateLimiterRegistry rateLimiterRegistry = RateLimiterRegistry.ofDefaults();
+        AuthService authService = new AuthService(authManager, jwtUtil, circuitBreakerRegistry, rateLimiterRegistry);
 
         String token = authService.login("user", "pass");
         assertEquals("fake-jwt-token", token);
@@ -55,12 +58,14 @@ class AuthServiceTests {
         AuthenticationManagerStub authManager = new AuthenticationManagerStub();
         authManager.setThrowBadCredentials(true);
         JwtUtilStub jwtUtil = new JwtUtilStub();
-        AuthService authService = new AuthService(authManager, jwtUtil);
+        CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults();
+        RateLimiterRegistry rateLimiterRegistry = RateLimiterRegistry.ofDefaults();
+        AuthService authService = new AuthService(authManager, jwtUtil, circuitBreakerRegistry, rateLimiterRegistry);
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+        BadCredentialsException exception = assertThrows(BadCredentialsException.class,
                 () -> authService.login("wrong", "wrong"));
 
-        assertEquals(500, exception.getStatusCode().value());
+        assertEquals("Invalid username or password", exception.getMessage());
     }
 
     @Test
@@ -68,7 +73,9 @@ class AuthServiceTests {
         AuthenticationManagerStub authManager = new AuthenticationManagerStub();
         authManager.setThrowRuntime(true);
         JwtUtilStub jwtUtil = new JwtUtilStub();
-        AuthService authService = new AuthService(authManager, jwtUtil);
+        CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults();
+        RateLimiterRegistry rateLimiterRegistry = RateLimiterRegistry.ofDefaults();
+        AuthService authService = new AuthService(authManager, jwtUtil, circuitBreakerRegistry, rateLimiterRegistry);
 
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> authService.login("user", "pass"));
