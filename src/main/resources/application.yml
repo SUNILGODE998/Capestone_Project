@@ -15,8 +15,8 @@ resilience4j:
   ratelimiter:
     instances:
       authServiceRateLimiter:
-        limitForPeriod: 5        # maximum 5 login attempts
-        limitRefreshPeriod: 10s   # per 1 minute
+        limitForPeriod: 10        # maximum 5 login attempts
+        limitRefreshPeriod: 1m   # per 1 minute
         timeoutDuration: 500ms   # wait time for a permit
 #resilience4j:
 #  ratelimiter:

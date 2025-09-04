@@ -42,7 +42,8 @@ class AuthControllerTests {
                     return authentication;
                 }
             };
-            JwtUtil dummyJwtUtil = new JwtUtil() {};
+            JwtUtil dummyJwtUtil = new JwtUtil() {
+            };
             CircuitBreakerRegistry dummyCircuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults();
             RateLimiterRegistry dummyRateLimiterRegistry = RateLimiterRegistry.ofDefaults();
 

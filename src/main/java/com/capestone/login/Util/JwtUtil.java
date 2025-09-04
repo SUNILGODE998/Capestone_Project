@@ -21,6 +21,7 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
     private final Key SECRET_KEY;
+
     public JwtUtil() {
         Dotenv dotenv = Dotenv.configure().load();
         String base64Key = dotenv.get("JWT_SECRET");
@@ -29,30 +30,37 @@ public class JwtUtil {
         }
         this.SECRET_KEY = Keys.hmacShaKeyFor(Decoders.BASE64.decode(base64Key));
     }
+
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);}
+        return extractClaim(token, Claims::getSubject);
+    }
 
     public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);}
+        return extractClaim(token, Claims::getExpiration);
+    }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);}
+        return claimsResolver.apply(claims);
+    }
 
-   private Claims extractAllClaims(String token) {
-                    return Jwts.parser()
-                            .verifyWith((SecretKey) SECRET_KEY)
-                            .build()
-                            .parseSignedClaims(token)
-                            .getPayload();
-                }
+    private Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith((SecretKey) SECRET_KEY)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
 
     private Boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());}
+        return extractExpiration(token).before(new Date());
+    }
 
-    public String generateToken(Authentication authentication) {
+    public String generateToken(Authentication authentication, String username) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, authentication.getName());}
+        claims.put("username", username);
+        return createToken(claims, authentication.getName());
+    }
 
     private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
@@ -62,7 +70,8 @@ public class JwtUtil {
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + 30000)) // 10 hours
                 .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
-                .compact();}
+                .compact();
+    }
 
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
@@ -71,5 +80,9 @@ public class JwtUtil {
 
     public String extractJti(String token) {
         return extractClaim(token, Claims::getId);
+    }
+
+    public String generateToken(Authentication authentication) {
+        return "";
     }
 }

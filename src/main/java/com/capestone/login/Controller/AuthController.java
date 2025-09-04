@@ -3,15 +3,18 @@ package com.capestone.login.Controller;
 
 import com.capestone.login.Model.User;
 import com.capestone.login.Service.AuthService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.naming.ServiceUnavailableException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,17 +30,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-//    @RateLimiter(name = "authServiceRateLimiter", fallbackMethod = "rateLimitFallback")
+    @RateLimiter(name = "authServiceRateLimiter")
     public ResponseEntity<String> login(@RequestBody User user) {
         String token = authService.loginWithResilience(user.getUsername(), user.getPassword());
         return ResponseEntity.ok(token);
-    }
-
-    // ✅ RateLimiter fallback → 429
-    public ResponseEntity<String> rateLimitFallback(@RequestBody User user, Throwable t) {
-        logger.warn("Rate limit exceeded for user: {}", user.getUsername());
-        throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                "Too many login attempts. Please wait before retrying.");
     }
 
     @PostMapping("/logout")

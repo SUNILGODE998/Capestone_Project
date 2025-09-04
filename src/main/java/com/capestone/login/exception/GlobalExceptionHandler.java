@@ -1,6 +1,7 @@
 package com.capestone.login.exception;
 
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -36,7 +37,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleCircuitBreaker(CallNotPermittedException ex, WebRequest request) {
         logger.error("CircuitBreaker open: {}", ex.getMessage());
         return buildResponse(HttpStatus.SERVICE_UNAVAILABLE,
-                "Too many failed login attempts. Please try again later.", request);
+                "Server is unavailable! Please try after 30 seconds.", request);
+    }
+
+    @ExceptionHandler(RequestNotPermitted.class)
+    public ResponseEntity<Map<String, Object>> handleRateLimiter(RequestNotPermitted ex, WebRequest request) {
+        logger.error("Rate limiter: {}", ex.getMessage());
+        return buildResponse(HttpStatus.TOO_MANY_REQUESTS,
+                "Too many requests. Please try again later.", request);
     }
 
     @ExceptionHandler(ResponseStatusException.class)
